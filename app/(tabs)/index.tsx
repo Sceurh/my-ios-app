@@ -79,13 +79,13 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.row}>
-            <Link href="/screens/ChatScreen" asChild>
+            <Link href="/(tabs)/chat" asChild>
               <TouchableOpacity style={styles.quickCard}>
                 <Text style={styles.quickCardText}>Ask AI</Text>
               </TouchableOpacity>
             </Link>
 
-            <Link href="/screens/LibraryScreen" asChild>
+            <Link href="/(tabs)/library" asChild>
               <TouchableOpacity style={styles.quickCard}>
                 <Text style={styles.quickCardText}>Library</Text>
               </TouchableOpacity>
@@ -133,6 +133,7 @@ const styles = StyleSheet.create({
   title: { 
     fontSize: 32, 
     fontWeight: "700",
+    marginTop: 25,
     marginBottom: 8,
     textAlign: "center",
   },
