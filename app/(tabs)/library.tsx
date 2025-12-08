@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function LibraryScreen() {
   return (
@@ -10,7 +10,9 @@ export default function LibraryScreen() {
 
       <View style={styles.emptyBox}>
         <Text style={styles.emptyText}>Пока пусто…</Text>
-        <Text style={styles.emptySub}>Добавляй материалы из раздела Explore.</Text>
+        <Text style={styles.emptySub}>
+          Добавляй материалы из раздела Explore.
+        </Text>
       </View>
     </View>
   );
@@ -18,17 +20,17 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
-  title: { fontSize: 28, fontWeight: "700" },
-  subtitle: { fontSize: 16, marginTop: 6, color: "#666" },
+  title: { fontSize: 28, fontWeight: '700' },
+  subtitle: { fontSize: 16, marginTop: 6, color: '#666' },
 
   emptyBox: {
     marginTop: 40,
     padding: 30,
     borderRadius: 14,
-    backgroundColor: "#909090ff",
-    alignItems: "center",
+    backgroundColor: '#909090ff',
+    alignItems: 'center',
   },
 
-  emptyText: { fontSize: 20, fontWeight: "600" },
-  emptySub: { marginTop: 4, color: "#555" },
+  emptyText: { fontSize: 20, fontWeight: '600' },
+  emptySub: { marginTop: 4, color: '#555' },
 });

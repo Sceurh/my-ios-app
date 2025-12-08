@@ -1,5 +1,5 @@
-import { Link } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { Link } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,22 +7,22 @@ import {
   TouchableOpacity,
   useColorScheme,
   View,
-} from "react-native";
+} from 'react-native';
 
 // Советы дня
 const dailyTips = [
-  "Сегодня ты сильнее, чем думаешь.",
-  "Сделай маленький шаг — он важнее, чем бездействие.",
-  "Дыши глубже. Ты справишься.",
-  "Ты достоин(а) хорошего.",
-  "Сегодня отличный день, чтобы начать заново.",
-  "Ты уже делаешь лучшее, на что способен(на).",
+  'Сегодня ты сильнее, чем думаешь.',
+  'Сделай маленький шаг — он важнее, чем бездействие.',
+  'Дыши глубже. Ты справишься.',
+  'Ты достоин(а) хорошего.',
+  'Сегодня отличный день, чтобы начать заново.',
+  'Ты уже делаешь лучшее, на что способен(на).',
 ];
 
 export default function HomeScreen() {
-  const [tip, setTip] = useState("");
+  const [tip, setTip] = useState('');
   const scheme = useColorScheme();
-  const isDark = scheme === "dark";
+  const isDark = scheme === 'dark';
 
   useEffect(() => {
     const random = dailyTips[Math.floor(Math.random() * dailyTips.length)];
@@ -30,19 +30,19 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <ScrollView 
+    <ScrollView
       style={[
         styles.container,
-        { backgroundColor: isDark ? "#0a0a0a" : "#f4f4f4" },
+        { backgroundColor: isDark ? '#0a0a0a' : '#f4f4f4' },
       ]}
       contentContainerStyle={styles.contentContainer}
     >
       {/* Заголовок */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: isDark ? "#fff" : "#111" }]}>
+        <Text style={[styles.title, { color: isDark ? '#fff' : '#111' }]}>
           Welcome!
         </Text>
-        <Text style={[styles.subtitle, { color: isDark ? "#aaa" : "#555" }]}>
+        <Text style={[styles.subtitle, { color: isDark ? '#aaa' : '#555' }]}>
           MindCare
         </Text>
       </View>
@@ -52,10 +52,10 @@ export default function HomeScreen() {
         <View
           style={[
             styles.tipBox,
-            { backgroundColor: isDark ? "#1b1b1b" : "#6C5CE7" },
+            { backgroundColor: isDark ? '#1b1b1b' : '#6C5CE7' },
           ]}
         >
-          <Text style={[styles.tipText, { color: isDark ? "#fff" : "#fff" }]}>
+          <Text style={[styles.tipText, { color: isDark ? '#fff' : '#fff' }]}>
             {tip}
           </Text>
         </View>
@@ -63,7 +63,7 @@ export default function HomeScreen() {
 
       {/* Быстрые действия */}
       <View style={styles.centeredSection}>
-        <Text style={[styles.section, { color: isDark ? "#fff" : "#111" }]}>
+        <Text style={[styles.section, { color: isDark ? '#fff' : '#111' }]}>
           Quick Actions
         </Text>
 
@@ -96,7 +96,7 @@ export default function HomeScreen() {
 
       {/* Цитата */}
       <View style={styles.centeredSection}>
-        <Text style={[styles.section, { color: isDark ? "#fff" : "#111" }]}>
+        <Text style={[styles.section, { color: isDark ? '#fff' : '#111' }]}>
           Quote of the day
         </Text>
 
@@ -104,12 +104,12 @@ export default function HomeScreen() {
           style={[
             styles.quoteBox,
             {
-              backgroundColor: isDark ? "#1a1a1a" : "#fff",
-              borderLeftColor: "#6C5CE7",
+              backgroundColor: isDark ? '#1a1a1a' : '#fff',
+              borderLeftColor: '#6C5CE7',
             },
           ]}
         >
-          <Text style={[styles.quote, { color: isDark ? "#bbb" : "#444" }]}>
+          <Text style={[styles.quote, { color: isDark ? '#bbb' : '#444' }]}>
             «Иногда, чтобы стать сильнее — нужно просто пережить день.»
           </Text>
         </View>
@@ -119,41 +119,41 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1 
+  container: {
+    flex: 1,
   },
-  contentContainer: { 
+  contentContainer: {
     padding: 20,
-    alignItems: "center",
+    alignItems: 'center',
   },
   header: {
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 30,
   },
-  title: { 
-    fontSize: 32, 
-    fontWeight: "700",
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
     marginTop: 25,
     marginBottom: 8,
-    textAlign: "center",
+    textAlign: 'center',
   },
-  subtitle: { 
-    fontSize: 18, 
-    color: "#666",
-    textAlign: "center",
+  subtitle: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
   },
   centeredSection: {
-    width: "100%",
+    width: '100%',
     maxWidth: 600,
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 30,
   },
   tipBox: {
     padding: 20,
     borderRadius: 16,
-    width: "100%",
-    alignItems: "center",
-    shadowColor: "#000",
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -162,36 +162,36 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  tipText: { 
-    fontSize: 18, 
+  tipText: {
+    fontSize: 18,
     lineHeight: 24,
-    textAlign: "center",
-    fontWeight: "500",
+    textAlign: 'center',
+    fontWeight: '500',
   },
-  section: { 
-    fontSize: 24, 
-    fontWeight: "700", 
+  section: {
+    fontSize: 24,
+    fontWeight: '700',
     marginBottom: 20,
-    textAlign: "center",
+    textAlign: 'center',
   },
   actionsGrid: {
-    width: "100%",
-    alignItems: "center",
+    width: '100%',
+    alignItems: 'center',
   },
   row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
     marginBottom: 15,
   },
   quickCard: {
-    width: "48%",
+    width: '48%',
     paddingVertical: 20,
-    backgroundColor: "#6C5CE7",
+    backgroundColor: '#6C5CE7',
     borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -200,19 +200,19 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  quickCardText: { 
-    color: "#fff", 
-    fontSize: 16, 
-    fontWeight: "600",
-    textAlign: "center",
+  quickCardText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   quoteBox: {
-    width: "100%",
+    width: '100%',
     padding: 20,
     borderRadius: 14,
     borderLeftWidth: 5,
-    alignItems: "center",
-    shadowColor: "#000",
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
@@ -221,10 +221,10 @@ const styles = StyleSheet.create({
     shadowRadius: 2.22,
     elevation: 3,
   },
-  quote: { 
-    fontSize: 16, 
-    fontStyle: "italic",
-    textAlign: "center",
+  quote: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    textAlign: 'center',
     lineHeight: 22,
   },
 });

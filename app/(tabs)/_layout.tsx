@@ -1,17 +1,17 @@
 // app/(tabs)/_layout.tsx
-import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import React from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import React from 'react';
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#4E8EF7",
-        tabBarInactiveTintColor: "#999",
+        tabBarActiveTintColor: '#4E8EF7',
+        tabBarInactiveTintColor: '#999',
         tabBarStyle: {
-          backgroundColor: "#1c1c1e",
+          backgroundColor: '#1c1c1e',
           borderTopWidth: 0.5,
         },
       }}
@@ -19,7 +19,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: 'Home',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -29,7 +29,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Explore",
+          title: 'Explore',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="compass-outline" size={size} color={color} />
           ),
@@ -39,9 +39,13 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: "Chat",
+          title: 'Chat',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -49,7 +53,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: "Library",
+          title: 'Library',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bookmark-outline" size={size} color={color} />
           ),
@@ -59,7 +63,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: 'Profile',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),

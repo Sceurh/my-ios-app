@@ -7,15 +7,15 @@ const emergencyKeywords = [
   'боли в груди',
   'кровотечение',
   'инфаркт',
-  'паника'
+  'паника',
 ];
 
 export const useEmergencyDetection = (inputText: string) => {
   const router = useRouter();
 
   useEffect(() => {
-    const found = emergencyKeywords.some(keyword =>
-      inputText.toLowerCase().includes(keyword)
+    const found = emergencyKeywords.some((keyword) =>
+      inputText.toLowerCase().includes(keyword),
     );
     if (found) {
       router.push('/screens/EmergencyModal');

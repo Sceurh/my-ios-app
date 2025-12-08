@@ -13,7 +13,7 @@ export function ThemedText({
   type = 'default',
   ...rest
 }: ThemedTextProps) {
-  return
+  return;
 }
 
 const styles = StyleSheet.create({

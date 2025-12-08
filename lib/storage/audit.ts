@@ -7,6 +7,6 @@ export async function appendAudit(entry: any) {
     list.push(entry);
     await AsyncStorage.setItem('audit', JSON.stringify(list));
   } catch (err) {
-    console.error("Audit store error:", err);
+    console.error('Audit store error:', err);
   }
 }
