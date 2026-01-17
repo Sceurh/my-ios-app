@@ -1,37 +1,67 @@
 // app/(tabs)/_layout.tsx
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import {
+  BookOpen,
+  Compass,
+  Home,
+  MessageSquare,
+  User,
+} from 'lucide-react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function TabsLayout() {
+  const { colors, isDark } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#4E8EF7',
-        tabBarInactiveTintColor: '#999',
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: colors.tabBarActive,
+        tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarStyle: {
-          backgroundColor: '#1c1c1e',
-          borderTopWidth: 0.5,
+          backgroundColor: colors.tabBar,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          height: 65,
+          paddingBottom: 10,
+          paddingTop: 10,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 6,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
+          title: 'Главная',
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
 
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
+          title: 'Исследовать',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass-outline" size={size} color={color} />
+            <Compass size={size} color={color} />
           ),
         }}
       />
@@ -39,13 +69,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'Chat',
+          title: 'Чат AI',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="chatbubble-ellipses-outline"
-              size={size}
-              color={color}
-            />
+            <MessageSquare size={size} color={color} />
           ),
         }}
       />
@@ -53,9 +79,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: 'Library',
+          title: 'Библиотека',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bookmark-outline" size={size} color={color} />
+            <BookOpen size={size} color={color} />
           ),
         }}
       />
@@ -63,10 +89,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
+          title: 'Профиль',
+          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
     </Tabs>
