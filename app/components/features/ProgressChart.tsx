@@ -69,8 +69,8 @@ export default function ProgressChart() {
     backgroundGradientFrom: colors.surface,
     backgroundGradientTo: colors.surface,
     decimalPlaces: 0,
-    color: (opacity = 1) => colors.accent,
-    labelColor: (opacity = 1) => colors.text,
+    color: (_opacity = 1) => colors.accent,
+    labelColor: (_opacity = 1) => colors.text,
     style: {
       borderRadius: 16,
     },
@@ -116,7 +116,7 @@ export default function ProgressChart() {
             datasets: [
               {
                 data: chartData.data,
-                color: (opacity = 1) => colors.accent,
+                color: (_opacity = 1) => colors.accent,
                 strokeWidth: 3,
               },
             ],

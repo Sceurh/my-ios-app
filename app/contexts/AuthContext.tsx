@@ -1,5 +1,6 @@
 // app/contexts/AuthContext.tsx
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { router } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/database/api';
 
@@ -14,7 +15,14 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+  ) => Promise<{
+    user: SupabaseUser | null;
+    session: Session | null;
+  }>;
   signOut: () => Promise<void>;
   signInWithApple: () => Promise<void>;
 }
@@ -26,23 +34,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Проверяем сохраненную сессию
+    // Проверяем активную сессию
     checkUser();
 
     // Слушаем изменения авторизации
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, session?.user?.email);
+
       if (session?.user) {
-        await saveUserSession(session.user);
-        setUser({
+        // Сохраняем пользователя
+        const userData: User = {
           id: session.user.id,
           email: session.user.email!,
           name: session.user.user_metadata?.name,
           avatar_url: session.user.user_metadata?.avatar_url,
+        };
+
+        // Обновляем профиль если нужно
+        await updateUserProfile(session.user.id, {
+          name: session.user.user_metadata?.name,
         });
+
+        setUser(userData);
       } else {
-        await clearUserSession();
         setUser(null);
       }
       setIsLoading(false);
@@ -55,17 +71,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkUser = async () => {
     try {
-      const sessionStr = await AsyncStorage.getItem('supabase.auth.session');
-      if (sessionStr) {
-        const session = JSON.parse(sessionStr);
-        if (session.user) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            name: session.user.user_metadata?.name,
-            avatar_url: session.user.user_metadata?.avatar_url,
-          });
-        }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata?.name,
+          avatar_url: session.user.user_metadata?.avatar_url,
+        });
       }
     } catch (error) {
       console.error('Error checking user:', error);
@@ -74,30 +90,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const saveUserSession = async (userData: any) => {
+  const updateUserProfile = async (userId: string, data: { name?: string }) => {
     try {
-      await AsyncStorage.setItem('user_session', JSON.stringify(userData));
-    } catch (error) {
-      console.error('Error saving session:', error);
-    }
-  };
+      const { error } = await supabase.from('user_profiles').upsert(
+        {
+          id: userId,
+          name: data.name,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'id',
+        },
+      );
 
-  const clearUserSession = async () => {
-    try {
-      await AsyncStorage.removeItem('user_session');
+      if (error) throw error;
     } catch (error) {
-      console.error('Error clearing session:', error);
+      console.error('Error updating profile:', error);
     }
   };
 
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (error) throw error;
+
+      if (data.user) {
+        router.replace('/(tabs)');
+      }
     } catch (error: any) {
       throw new Error(error.message || 'Ошибка входа');
     } finally {
@@ -108,14 +132,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { name },
+          emailRedirectTo: 'mindcare://auth/callback',
         },
       });
+
       if (error) throw error;
+
+      // Создаем профиль пользователя
+      if (data.user) {
+        await updateUserProfile(data.user.id, { name });
+      }
+
+      return data;
     } catch (error: any) {
       throw new Error(error.message || 'Ошибка регистрации');
     } finally {
@@ -128,7 +161,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
       setUser(null);
+      router.replace('/auth/login');
     } catch (error: any) {
       throw new Error(error.message || 'Ошибка выхода');
     } finally {
@@ -137,13 +172,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithApple = async () => {
-    // Реализация Apple Sign In будет позже
-    throw new Error('Apple Sign In not implemented yet');
+    // Пока заглушка
+    throw new Error('Apple Sign In не поддерживается в этом регионе');
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, signIn, signUp, signOut, signInWithApple }}
+      value={{
+        user,
+        isLoading,
+        signIn,
+        signUp,
+        signOut,
+        signInWithApple,
+      }}
     >
       {children}
     </AuthContext.Provider>

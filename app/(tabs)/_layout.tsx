@@ -10,7 +10,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function TabsLayout() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   return (
     <Tabs
@@ -25,7 +25,7 @@ export default function TabsLayout() {
           borderTopColor: colors.border,
           height: 65,
           paddingBottom: 10,
-          paddingTop: 10,
+          paddingTop: 0,
           elevation: 8,
           shadowColor: '#000',
           shadowOffset: {
@@ -33,18 +33,18 @@ export default function TabsLayout() {
             height: -2,
           },
           shadowOpacity: 0.1,
-          shadowRadius: 8,
+          shadowRadius: 1,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 1,
         },
         tabBarIconStyle: {
-          marginTop: 4,
+          marginTop: 0,
         },
         tabBarItemStyle: {
-          paddingVertical: 6,
+          paddingVertical: 2,
         },
       }}
     >
