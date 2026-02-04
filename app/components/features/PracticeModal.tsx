@@ -10,29 +10,34 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { PRACTICES, PracticeId } from '../../constants/practices';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface PracticeModalProps {
   visible: boolean;
   onClose: () => void;
-  practice: {
-    id: string;
-    title: string;
-    emoji: string;
-    color: string;
-    description: string;
-    steps: string[];
-    duration: string;
-    benefits: string[];
-  };
+  practiceId: PracticeId;
 }
 
 export default function PracticeModal({
   visible,
   onClose,
-  practice,
+  practiceId,
 }: PracticeModalProps) {
   const { colors } = useTheme();
+
+  // Защита от undefined
+  const practice = PRACTICES[practiceId];
+
+  if (!practice) {
+    return null;
+  }
+
+  const handleStartPractice = () => {
+    // Здесь можно добавить логику запуска таймера, навигации и т.д.
+    // Например: router.push(`/practices/${practiceId}/timer`);
+    onClose();
+  };
 
   return (
     <Modal
@@ -40,6 +45,7 @@ export default function PracticeModal({
       transparent
       visible={visible}
       onRequestClose={onClose}
+      statusBarTranslucent
     >
       <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
         <View style={styles.centeredView}>
@@ -47,10 +53,8 @@ export default function PracticeModal({
             {/* Заголовок */}
             <View style={styles.header}>
               <View style={styles.titleContainer}>
-                <Text style={[styles.emoji, { color: practice.color }]}>
-                  {practice.emoji}
-                </Text>
-                <View>
+                <Text style={[styles.emoji]}>{practice.emoji}</Text>
+                <View style={styles.titleTextContainer}>
                   <Text style={[styles.title, { color: colors.text }]}>
                     {practice.title}
                   </Text>
@@ -61,13 +65,21 @@ export default function PracticeModal({
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={onClose}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            {/* Описание */}
-            <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Контент */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.scrollView}
+            >
+              {/* Описание */}
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   Описание
@@ -110,11 +122,14 @@ export default function PracticeModal({
                 </Text>
                 {practice.benefits.map((benefit, index) => (
                   <View key={index} style={styles.benefit}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={practice.color}
-                    />
+                    <View
+                      style={[
+                        styles.checkIcon,
+                        { backgroundColor: practice.color },
+                      ]}
+                    >
+                      <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                    </View>
                     <Text
                       style={[
                         styles.benefitText,
@@ -126,18 +141,60 @@ export default function PracticeModal({
                   </View>
                 ))}
               </View>
+
+              {/* Рекомендация */}
+              {practice.instructions && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Рекомендация
+                  </Text>
+                  <View
+                    style={[
+                      styles.instructionBox,
+                      { backgroundColor: practice.color + '15' },
+                    ]}
+                  >
+                    <Ionicons
+                      name="bulb-outline"
+                      size={20}
+                      color={practice.color}
+                    />
+                    <Text
+                      style={[styles.instructionText, { color: colors.text }]}
+                    >
+                      {practice.instructions}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </ScrollView>
 
-            {/* Кнопка начала */}
-            <TouchableOpacity
-              style={[styles.startButton, { backgroundColor: practice.color }]}
-              onPress={() => {
-                // Логика начала практики
-                onClose();
-              }}
-            >
-              <Text style={styles.startButtonText}>Начать практику</Text>
-            </TouchableOpacity>
+            {/* Кнопки действий */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: colors.border }]}
+                onPress={onClose}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[styles.secondaryButtonText, { color: colors.text }]}
+                >
+                  Позже
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.startButton,
+                  { backgroundColor: practice.color },
+                ]}
+                onPress={handleStartPractice}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="play-circle" size={22} color="#FFFFFF" />
+                <Text style={styles.startButtonText}>Начать практику</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </BlurView>
@@ -157,7 +214,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 500,
-    maxHeight: '80%',
+    maxHeight: '85%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -179,6 +236,9 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 40,
   },
+  titleTextContainer: {
+    flex: 1,
+  },
   title: {
     fontSize: 24,
     fontWeight: '700',
@@ -186,6 +246,13 @@ const styles = StyleSheet.create({
   },
   duration: {
     fontSize: 14,
+    opacity: 0.8,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  scrollView: {
+    flexGrow: 0,
   },
   section: {
     marginBottom: 24,
@@ -229,16 +296,62 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 8,
   },
+  checkIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+    marginTop: 2,
+  },
   benefitText: {
     fontSize: 16,
     lineHeight: 22,
     flex: 1,
   },
-  startButton: {
+  instructionBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  instructionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+    fontStyle: 'italic',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  secondaryButton: {
+    flex: 1,
     padding: 16,
     borderRadius: 16,
+    borderWidth: 2,
     alignItems: 'center',
-    marginTop: 16,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  startButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   startButtonText: {
     color: '#FFFFFF',

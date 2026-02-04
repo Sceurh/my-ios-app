@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import React, { useEffect, useState } from 'react';
 import {
   RefreshControl,
@@ -50,6 +49,7 @@ export default function HomeScreen() {
   }, []);
 
   const handlePracticePress = (practiceId: string) => {
+    console.log('Practice pressed:', practiceId);
     if (practiceId === 'emergency') {
       setShowEmergencyModal(true);
     } else {
@@ -122,14 +122,13 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Модалка практики */}
-      {selectedPractice &&
-        PRACTICES[selectedPractice as keyof typeof PRACTICES] && (
-          <PracticeModal
-            visible={!!selectedPractice}
-            onClose={() => setSelectedPractice(null)}
-            practice={PRACTICES[selectedPractice as keyof typeof PRACTICES]}
-          />
-        )}
+      {selectedPractice && (
+        <PracticeModal
+          visible={!!selectedPractice}
+          onClose={() => setSelectedPractice(null)}
+          practiceId={selectedPractice as keyof typeof PRACTICES}
+        />
+      )}
 
       {/* Модалка экстренной помощи */}
       <EmergencyModal

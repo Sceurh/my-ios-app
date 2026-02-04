@@ -5,6 +5,7 @@ import {
   Compass,
   Home,
   MessageSquare,
+  Shield,
   User,
 } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
@@ -57,7 +58,15 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="explore"
+        name="emergency/index"
+        options={{
+          title: 'Срочная помощь',
+          tabBarIcon: ({ color, size }) => <Shield size={size} color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="explore/index"
         options={{
           title: 'Исследовать',
           tabBarIcon: ({ color, size }) => (
@@ -77,7 +86,7 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="library"
+        name="library/index"
         options={{
           title: 'Библиотека',
           tabBarIcon: ({ color, size }) => (
@@ -87,7 +96,7 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="profile"
+        name="profile/index"
         options={{
           title: 'Профиль',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,

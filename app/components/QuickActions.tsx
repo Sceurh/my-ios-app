@@ -1,40 +1,34 @@
 // app/components/QuickActions.tsx
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { QUICK_ACTIONS } from '../constants/tips';
-import { QuickAction } from '../types';
 
 type QuickActionsProps = {
-  actions?: QuickAction[];
   onPressAction?: (practiceId: string) => void;
 };
 
-const QuickActions = ({
-  actions = QUICK_ACTIONS,
-  onPressAction,
-}: QuickActionsProps) => {
+const QuickActions = ({ onPressAction }: QuickActionsProps) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Быстрые практики</Text>
       <View style={styles.grid}>
-        {actions.map((action) => (
-          <Link key={action.id} href={action.route} asChild>
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => onPressAction?.(action.id)}
+        {QUICK_ACTIONS.map((action) => (
+          <TouchableOpacity
+            key={action.id}
+            style={styles.card}
+            onPress={() => onPressAction?.(action.id)}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={[`${action.color}CC`, `${action.color}99`]}
+              style={[styles.gradient, { borderLeftColor: action.color }]}
             >
-              <LinearGradient
-                colors={[`${action.color}CC`, `${action.color}99`]}
-                style={[styles.gradient, { borderLeftColor: action.color }]}
-              >
-                <Text style={styles.icon}>{action.icon}</Text>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.subtitle}>{action.subtitle}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Link>
+              <Text style={styles.icon}>{action.icon}</Text>
+              <Text style={styles.actionTitle}>{action.title}</Text>
+              <Text style={styles.subtitle}>{action.subtitle}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
