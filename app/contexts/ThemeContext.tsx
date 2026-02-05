@@ -11,6 +11,7 @@ interface ThemeColors {
   text: string;
   textSecondary: string;
   accent: string;
+  primary: string;
   border: string;
   tabBar: string;
   tabBarActive: string;
@@ -31,6 +32,7 @@ const lightColors: ThemeColors = {
   text: '#0F172A',
   textSecondary: '#64748B',
   accent: '#7C3AED',
+  primary: '#7C3AED',
   border: '#E2E8F0',
   tabBar: '#FFFFFF',
   tabBarActive: '#7C3AED',
@@ -39,6 +41,7 @@ const lightColors: ThemeColors = {
 
 const darkColors: ThemeColors = {
   background: '#0F172A',
+  primary: '#8B5CF6',
   surface: '#1E293B',
   text: '#F1F5F9',
   textSecondary: '#94A3B8',

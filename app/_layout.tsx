@@ -1,27 +1,76 @@
 // app/_layout.tsx
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { MoodProvider } from './contexts/MoodContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
-// // Компонент-обертка для проверки авторизации
-// function AuthGuard({ children }: { children: React.ReactNode }) {
-//   const { user, isLoading } = useAuth();
+function LoadingScreen() {
+  const { colors } = useTheme();
 
-//   if (isLoading) {
-//     // Показываем загрузку
-//     return null; // или <LoadingScreen />
-//   }
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: colors.background,
+      }}
+    >
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={{ marginTop: 16, color: colors.text, fontSize: 16 }}>
+        Загрузка...
+      </Text>
+    </View>
+  );
+}
 
-//   if (!user) {
-//     // Если не авторизован - на логин
-//     return <Redirect href="/auth/login" />;
-//   }
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
 
-//   return <>{children}</>;
-// }
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  // Если пользователь не авторизован и не гость
+  if (!user) {
+    return <Redirect href="/auth/welcome" />;
+  }
+
+  return <>{children}</>;
+}
+
+function RootLayoutContent() {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <>
+      <AuthGuard>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen
+            name="practices"
+            options={{
+              presentation: 'modal',
+              headerShown: true,
+              headerTitle: 'Практики',
+            }}
+          />
+        </Stack>
+      </AuthGuard>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </>
+  );
+}
 
 export default function RootLayout() {
   return (
@@ -29,18 +78,7 @@ export default function RootLayout() {
       <ThemeProvider>
         <AuthProvider>
           <MoodProvider>
-            {/* AuthGuard проверяет авторизацию */}
-            {/* <AuthGuard> */}
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="auth" />
-              <Stack.Screen
-                name="practices"
-                options={{ presentation: 'modal' }}
-              />
-            </Stack>
-            <StatusBar style="auto" />
-            {/* </AuthGuard> */}
+            <RootLayoutContent />
           </MoodProvider>
         </AuthProvider>
       </ThemeProvider>

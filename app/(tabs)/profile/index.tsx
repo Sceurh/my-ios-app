@@ -1,9 +1,11 @@
 // app/(tabs)/profile/index.tsx
+import { useRouter } from 'expo-router';
 import {
   Bell,
   ChevronDown,
   ChevronRight,
   HelpCircle,
+  LogIn,
   LogOut,
   Moon,
   Palette,
@@ -28,8 +30,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { colors, theme, setTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, isGuest, signOut, isLoading } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [isThemeExpanded, setIsThemeExpanded] = useState(false);
 
@@ -39,10 +42,19 @@ export default function ProfileScreen() {
     { id: 'dark', label: 'Тёмная', icon: Moon, value: 'dark' },
   ];
 
-  // Функция для получения текущей темы в текстовом виде
   const getCurrentThemeLabel = () => {
     const current = themeOptions.find((opt) => opt.value === theme);
     return current ? current.label : 'Системная';
+  };
+
+  const handleAuthAction = () => {
+    if (isGuest) {
+      // Для гостя - переход на логин
+      router.push('/auth/login');
+    } else {
+      // Для авторизованного пользователя - выход
+      signOut();
+    }
   };
 
   return (
@@ -55,16 +67,45 @@ export default function ProfileScreen() {
       >
         {/* Заголовок */}
         <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-            <User size={32} color="#FFFFFF" />
+          <View
+            style={[
+              styles.avatar,
+              { backgroundColor: isGuest ? colors.border : colors.accent },
+            ]}
+          >
+            <User
+              size={32}
+              color={isGuest ? colors.textSecondary : '#FFFFFF'}
+            />
+            {isGuest && (
+              <View
+                style={[styles.guestBadge, { backgroundColor: colors.surface }]}
+              >
+                <Text
+                  style={[
+                    styles.guestBadgeText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Гость
+                </Text>
+              </View>
+            )}
           </View>
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: colors.text }]}>
               {user?.name || 'Пользователь'}
             </Text>
             <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-              {user?.email || 'mindcare@example.com'}
+              {isGuest
+                ? 'Гостевой режим'
+                : user?.email || 'mindcare@example.com'}
             </Text>
+            {isGuest && (
+              <Text style={[styles.guestNote, { color: colors.accent }]}>
+                Для синхронизации данных войдите в аккаунт
+              </Text>
+            )}
           </View>
         </View>
 
@@ -88,7 +129,7 @@ export default function ProfileScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
-          {/* Темы (раскрывающийся пункт) */}
+          {/* Темы */}
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => setIsThemeExpanded(true)}
@@ -110,13 +151,7 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
-            <ChevronDown
-              size={20}
-              color={colors.textSecondary}
-              style={{
-                marginLeft: 8,
-              }}
-            />
+            <ChevronDown size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           {/* Общие настройки */}
           <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
@@ -135,7 +170,6 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Конфиденциальность
           </Text>
-
           <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
             <View style={styles.settingLeft}>
               <Shield size={22} color={colors.textSecondary} />
@@ -145,7 +179,6 @@ export default function ProfileScreen() {
             </View>
             <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
             <View style={styles.settingLeft}>
               <HelpCircle size={22} color={colors.textSecondary} />
@@ -157,17 +190,49 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Выход */}
+        {/* Основная кнопка (Войти/Выйти) */}
         <TouchableOpacity
-          style={[styles.logoutButton, { borderColor: colors.border }]}
-          onPress={signOut}
+          style={[
+            styles.mainAuthButton,
+            {
+              backgroundColor: isGuest ? colors.accent : 'transparent',
+              borderColor: isGuest ? 'transparent' : colors.border,
+              borderWidth: isGuest ? 0 : 2,
+            },
+          ]}
+          onPress={handleAuthAction}
           activeOpacity={0.7}
+          disabled={isLoading}
         >
-          <LogOut size={22} color="#EF4444" />
-          <Text style={[styles.logoutText, { color: '#EF4444' }]}>
-            Выйти из аккаунта
-          </Text>
+          {isGuest ? (
+            <>
+              <LogIn size={22} color="#FFFFFF" />
+              <Text style={[styles.mainAuthButtonText, { color: '#FFFFFF' }]}>
+                Войти в аккаунт
+              </Text>
+            </>
+          ) : (
+            <>
+              <LogOut size={22} color="#EF4444" />
+              <Text style={[styles.mainAuthButtonText, { color: '#EF4444' }]}>
+                Выйти из аккаунта
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
+
+        {/* Дополнительная кнопка для гостя */}
+        {isGuest && (
+          <TouchableOpacity
+            style={[styles.secondaryButton, { borderColor: colors.border }]}
+            onPress={signOut}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+              Очистить гостевые данные
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Версия приложения */}
         <Text style={[styles.version, { color: colors.textSecondary }]}>
@@ -283,6 +348,20 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  guestBadge: {
+    position: 'absolute',
+    bottom: -6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  guestBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   userInfo: {
     flex: 1,
@@ -295,6 +374,11 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 14,
     opacity: 0.8,
+    marginBottom: 4,
+  },
+  guestNote: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   section: {
     borderRadius: 20,
@@ -333,20 +417,37 @@ const styles = StyleSheet.create({
     marginTop: 2,
     opacity: 0.7,
   },
-  logoutButton: {
+  mainAuthButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
     borderRadius: 16,
-    borderWidth: 2,
     marginTop: 8,
-    marginBottom: 30,
+    marginBottom: 12,
     gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  logoutText: {
+  mainAuthButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 30,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   version: {
     textAlign: 'center',
@@ -354,8 +455,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     opacity: 0.6,
   },
-
-  // Стили для модального окна (поверх всего)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -398,9 +497,7 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 16,
   },
-  modalItemSelected: {
-    // Стили применяются через массив
-  },
+  modalItemSelected: {},
   selectedDot: {
     width: 8,
     height: 8,
