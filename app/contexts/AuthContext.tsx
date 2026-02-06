@@ -46,11 +46,15 @@ interface AuthContextType {
     user: SupabaseUser | null;
     session: Session | null;
   }>;
-  refreshUser: () => Promise<void>; // Добавил функцию обновления пользователя
-  updateProfile: (data: Partial<User>) => Promise<void>; // Добавил функцию обновления профиля
+  refreshUser: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Константы для таймаутов
+const AUTH_TIMEOUT = 5000; // 5 секунд таймаут
+const AUTH_CHECK_INTERVAL = 30000; // 30 секунд для периодической проверки
 
 const GUEST_USER_KEY = 'guest_user_data';
 const GUEST_ID_KEY = 'guest_user_id';
@@ -61,11 +65,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const mountedRef = useRef(true);
+  const initializedRef = useRef(false);
+  const initStartedRef = useRef(false);
 
   useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
+    console.log('AuthProvider mounted');
+    return () => console.log('AuthProvider unmounted');
   }, []);
 
   // Функции для работы с гостевой сессией
@@ -119,82 +124,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const checkUser = useCallback(async () => {
-    if (!mountedRef.current) return;
-
-    try {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (error) {
-        console.error('Error getting session:', error);
-        // Продолжаем проверку гостевого режима
-      }
-
-      if (session?.user) {
-        // Получаем профиль из базы данных
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Error fetching profile:', profileError);
-        }
-
-        const userData: User = {
-          id: session.user.id,
-          email: session.user.email!,
-          name: profile?.name || session.user.user_metadata?.name,
-          avatar_url:
-            profile?.avatar_url || session.user.user_metadata?.avatar_url,
-          isGuest: false,
-          created_at: session.user.created_at,
-        };
-
-        await clearGuestData();
-        setUser(userData);
-        setIsGuest(false);
-      } else {
-        const guestUser = await getGuestUser();
-        if (guestUser) {
-          setUser(guestUser);
-          setIsGuest(true);
-        } else {
-          setUser(null);
-          setIsGuest(false);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking user:', error);
-      // В случае ошибки проверяем гостевой режим
-      const guestUser = await getGuestUser();
-      if (guestUser) {
-        setUser(guestUser);
-        setIsGuest(true);
-      }
-    } finally {
-      if (mountedRef.current) {
+  // Функция обработки сессии пользователя
+  const processUserSession = useCallback(
+    async (session: Session | null) => {
+      if (!mountedRef.current) {
         setIsLoading(false);
+        return;
       }
-    }
-  }, [clearGuestData, getGuestUser]);
 
-  useEffect(() => {
-    checkUser();
+      try {
+        if (session?.user) {
+          console.log('Authenticated user:', session.user.email);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, session?.user?.email);
-
-      if (!mountedRef.current) return;
-
-      if (session?.user) {
-        try {
           // Получаем профиль из базы данных
           const { data: profile } = await supabase
             .from('user_profiles')
@@ -215,45 +156,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await clearGuestData();
 
           // Обновляем или создаем профиль
-          const { error: upsertError } = await supabase
-            .from('user_profiles')
-            .upsert({
-              id: session.user.id,
-              name: userData.name,
-              email: userData.email,
-              avatar_url: userData.avatar_url,
-              updated_at: new Date().toISOString(),
-            });
-
-          if (upsertError) {
-            console.error('Error upserting profile:', upsertError);
-          }
+          await supabase.from('user_profiles').upsert({
+            id: session.user.id,
+            name: userData.name,
+            email: userData.email,
+            avatar_url: userData.avatar_url,
+            updated_at: new Date().toISOString(),
+          });
 
           setUser(userData);
           setIsGuest(false);
-        } catch (error) {
-          console.error('Error in auth state change:', error);
+          initializedRef.current = true;
+        } else {
+          const guestUser = await getGuestUser();
+          if (guestUser) {
+            console.log('Guest user found');
+            setUser(guestUser);
+            setIsGuest(true);
+          } else {
+            console.log('No user found, redirecting to welcome');
+          }
+          initializedRef.current = true;
         }
-      } else {
+      } catch (error) {
+        console.error('Error in processUserSession:', error);
         const guestUser = await getGuestUser();
         if (guestUser) {
           setUser(guestUser);
           setIsGuest(true);
-        } else {
-          setUser(null);
-          setIsGuest(false);
         }
-      }
-
-      if (mountedRef.current) {
+      } finally {
+        initializedRef.current = true;
         setIsLoading(false);
       }
+    },
+    [clearGuestData, getGuestUser],
+  );
+
+  // Инициализация авторизации с таймаутом
+  const initAuth = async () => {
+    if (initStartedRef.current) return;
+
+    initStartedRef.current = true;
+    console.log('Initializing auth...');
+    try {
+      const { data } = await supabase.auth.getSession();
+      console.log('Initial auth check complete');
+      await processUserSession(data.session);
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      await processUserSession(null);
+    }
+  };
+
+  // Инициализация при загрузке - ОДИН РАЗ
+  useEffect(() => {
+    initAuth();
+  }, []);
+
+  // Подписка на изменения auth состояния
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Игнорируем INITIAL_SESSION после инициализации
+      if (event === 'INITIAL_SESSION') {
+        console.log('Ignoring INITIAL_SESSION after initialization');
+        return;
+      }
+      console.log('Auth event:', event);
+      processUserSession(session);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [checkUser, clearGuestData, getGuestUser]);
+  }, [processUserSession]);
 
   const generateGuestId = (): string => {
     return `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -298,15 +276,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         await clearGuestData();
-        router.replace('/(tabs)');
+        // onAuthStateChange обработает SIGNED_IN
       }
     } catch (error: any) {
       console.error('Error in signIn:', error);
-      throw new Error(error.message || 'Ошибка входа');
-    } finally {
       if (mountedRef.current) {
         setIsLoading(false);
       }
+      throw new Error(error.message || 'Ошибка входа');
     }
   };
 
@@ -329,19 +306,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Создаем профиль пользователя
       if (data.user) {
         try {
-          const { error: upsertError } = await supabase
-            .from('user_profiles')
-            .upsert({
-              id: data.user.id,
-              name: name,
-              email: email,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-
-          if (upsertError) {
-            console.error('Error creating profile:', upsertError);
-          }
+          await supabase.from('user_profiles').upsert({
+            id: data.user.id,
+            name: name,
+            email: email,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
         } catch (error) {
           console.error('Error creating profile:', error);
         }
@@ -356,14 +327,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      return data;
-    } catch (error: any) {
-      console.error('Error in signUp:', error);
-      throw new Error(error.message || 'Ошибка регистрации');
-    } finally {
       if (mountedRef.current) {
         setIsLoading(false);
       }
+
+      return data;
+    } catch (error: any) {
+      console.error('Error in signUp:', error);
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
+      throw new Error(error.message || 'Ошибка регистрации');
     }
   };
 
@@ -395,8 +369,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data.user.id,
         );
         try {
-          // Миграция данных из гостевого аккаунта
-          // Пример для moods таблицы:
           const { error: migrateError } = await supabase
             .from('moods')
             .update({ user_id: data.user.id })
@@ -423,14 +395,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      return data;
-    } catch (error: any) {
-      console.error('Error in convertGuestToUser:', error);
-      throw new Error(error.message || 'Ошибка конвертации');
-    } finally {
       if (mountedRef.current) {
         setIsLoading(false);
       }
+
+      return data;
+    } catch (error: any) {
+      console.error('Error in convertGuestToUser:', error);
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
+      throw new Error(error.message || 'Ошибка конвертации');
     }
   };
 
@@ -445,18 +420,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
-
-        setUser(null);
-        setIsGuest(false);
-        router.replace('/auth/login');
+        // onAuthStateChange обработает SIGNED_OUT
       }
     } catch (error: any) {
       console.error('Error in signOut:', error);
-      throw new Error(error.message || 'Ошибка выхода');
-    } finally {
       if (mountedRef.current) {
         setIsLoading(false);
       }
+      throw new Error(error.message || 'Ошибка выхода');
     }
   };
 
@@ -466,7 +437,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      await checkUser();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      await processUserSession(session);
     } catch (error) {
       console.error('Error refreshing user:', error);
     }

@@ -17,8 +17,14 @@ export default function WelcomeScreen() {
   };
 
   const handleGuest = async () => {
-    await continueAsGuest();
-    router.replace('/(tabs)');
+    if (isLoading) return;
+
+    try {
+      await continueAsGuest();
+      // router.replace будет вызван в continueAsGuest
+    } catch (error) {
+      console.error('Guest login error:', error);
+    }
   };
 
   return (

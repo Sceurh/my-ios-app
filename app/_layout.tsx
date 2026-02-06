@@ -1,5 +1,5 @@
 // app/_layout.tsx
-import { Redirect, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -20,7 +20,7 @@ function LoadingScreen() {
         backgroundColor: colors.background,
       }}
     >
-      <ActivityIndicator size="large" color={colors.primary} />
+      <ActivityIndicator size="large" color={colors.accent} />
       <Text style={{ marginTop: 16, color: colors.text, fontSize: 16 }}>
         Загрузка...
       </Text>
@@ -28,45 +28,33 @@ function LoadingScreen() {
   );
 }
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
+function RootLayoutContent() {
+  const { colors, isDark } = useTheme();
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  // Если пользователь не авторизован и не гость
-  if (!user) {
-    return <Redirect href="/auth/welcome" />;
-  }
-
-  return <>{children}</>;
-}
-
-function RootLayoutContent() {
-  const { colors, isDark } = useTheme();
-
   return (
     <>
-      <AuthGuard>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="auth" />
-          <Stack.Screen
-            name="practices"
-            options={{
-              presentation: 'modal',
-              headerShown: true,
-              headerTitle: 'Практики',
-            }}
-          />
-        </Stack>
-      </AuthGuard>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        {user ? (
+          <>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="practices" />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="auth" />
+          </>
+        )}
+      </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </>
   );
