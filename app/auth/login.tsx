@@ -146,6 +146,18 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
+          <View style={styles.forgotPasswordContainer}>
+            <TouchableOpacity
+              onPress={() => router.push('../auth/reset-password')}
+            >
+              <Text
+                style={[styles.forgotPasswordText, { color: colors.accent }]}
+              >
+                Забыли пароль?
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Регистрация */}
           <View style={styles.registerContainer}>
             <Text
@@ -256,6 +268,15 @@ const styles = StyleSheet.create({
   appleButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginTop: 12,
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   registerContainer: {
     flexDirection: 'row',

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "my-ios-app",
-    "slug": "my-ios-app",
+    "name": "Mindcare",
+    "slug": "mindcare",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myiosapp",
+    "scheme": "mindcare",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

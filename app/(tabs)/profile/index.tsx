@@ -129,6 +129,21 @@ export default function ProfileScreen() {
               thumbColor="#FFFFFF"
             />
           </View>
+          <TouchableOpacity
+            style={styles.settingItem}
+            activeOpacity={0.7}
+            onPress={() =>
+              router.push('../../components/profile_settings/settings')
+            }
+          >
+            <View style={styles.settingLeft}>
+              <Settings size={22} color={colors.textSecondary} />
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                Настройки профиля
+              </Text>
+            </View>
+            <ChevronRight size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
           {/* Темы */}
           <TouchableOpacity
             style={styles.settingItem}
@@ -152,16 +167,6 @@ export default function ProfileScreen() {
               </View>
             </View>
             <ChevronDown size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-          {/* Общие настройки */}
-          <TouchableOpacity style={styles.settingItem} activeOpacity={0.7}>
-            <View style={styles.settingLeft}>
-              <Settings size={22} color={colors.textSecondary} />
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Общие настройки
-              </Text>
-            </View>
-            <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 

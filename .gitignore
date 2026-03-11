@@ -44,3 +44,5 @@ app-example
 
 # ide
 .idea/
+
+.env

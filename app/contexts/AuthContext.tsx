@@ -1,5 +1,6 @@
 // app/contexts/AuthContext.tsx
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, {
@@ -48,13 +49,11 @@ interface AuthContextType {
   }>;
   refreshUser: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Константы для таймаутов
-const AUTH_TIMEOUT = 5000; // 5 секунд таймаут
-const AUTH_CHECK_INTERVAL = 30000; // 30 секунд для периодической проверки
 
 const GUEST_USER_KEY = 'guest_user_data';
 const GUEST_ID_KEY = 'guest_user_id';
@@ -225,6 +224,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       console.log('Auth event:', event);
+
+      //  обработка восстановления пароля
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('Password recovery detected');
+        // Перенаправляем на страницу смены пароля
+        router.replace('/auth/update-password');
+      }
       processUserSession(session);
     });
 
@@ -252,8 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await saveGuestUser(guestUser);
       setUser(guestUser);
       setIsGuest(true);
-
-      router.replace('/(tabs)');
+      console.log('Guest user created successfully:', guestId);
     } catch (error: any) {
       console.error('Error in continueAsGuest:', error);
       throw new Error(error.message || 'Ошибка создания гостевого аккаунта');
@@ -290,6 +295,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
+      // Проверяем, существует ли пользователь
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (existingUser && !userCheckError) {
+        throw new Error('Пользователь с таким email уже существует');
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -306,15 +322,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Создаем профиль пользователя
       if (data.user) {
         try {
-          await supabase.from('user_profiles').upsert({
-            id: data.user.id,
-            name: name,
-            email: email,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        } catch (error) {
-          console.error('Error creating profile:', error);
+          console.log('Creating profile for user:', data.user.id);
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .upsert({
+              id: data.user.id,
+              name: name,
+              email: email,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+          } else {
+            console.log('Profile created successfully for:', email);
+          }
+        } catch (profileError) {
+          console.error('Error creating profile:', profileError);
         }
       }
 
@@ -420,7 +445,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
-        // onAuthStateChange обработает SIGNED_OUT
+
+        // Очищаем состояние сразу
+        setUser(null);
+        setIsGuest(false);
+
+        // Создаем гостя автоматически или редиректим
+        setTimeout(() => {
+          continueAsGuest().catch(() => {
+            router.replace('/auth/welcome');
+          });
+        }, 100);
       }
     } catch (error: any) {
       console.error('Error in signOut:', error);
@@ -476,6 +511,234 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    setIsLoading(true);
+    try {
+      // Самый надежный способ - Linking.createURL()
+      const redirectTo = Linking.createURL('auth/reset-password');
+
+      console.log('Reset password redirect URL:', redirectTo);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      if (error) throw error;
+
+      Alert.alert(
+        'Письмо отправлено',
+        'На вашу почту отправлена ссылка для восстановления пароля. Перейдите по ней с телефона, где установлено приложение.',
+        [{ text: 'OK' }],
+      );
+    } catch (error: any) {
+      console.error('Error in resetPassword:', error);
+      throw new Error(error.message || 'Ошибка восстановления пароля');
+    } finally {
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const deleteAccount = async () => {
+    setIsLoading(true);
+    try {
+      if (!user) throw new Error('Пользователь не найден');
+
+      // Сначала пробуем обновить сессию
+      const {
+        data: { session: currentSession },
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error('Session refresh error:', refreshError);
+        // Если не можем обновить, пробуем получить текущую
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+        if (sessionError || !session) {
+          throw new Error('Сессия не найдена. Пожалуйста, войдите снова.');
+        }
+      }
+
+      // Получаем свежую сессию
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Сессия не найдена. Пожалуйста, войдите снова.');
+      }
+
+      console.log('Session user:', session.user.id);
+
+      // Исправление ошибки TypeScript - проверяем наличие expires_at
+      if (session.expires_at) {
+        console.log(
+          'Token expires at:',
+          new Date(session.expires_at * 1000).toLocaleString(),
+        );
+      } else {
+        console.log('Token expiration time not available');
+      }
+
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+      const functionUrl = `${supabaseUrl}/functions/v1/delete-account`;
+      const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
+      console.log('Calling function URL:', functionUrl);
+
+      // Пробуем разные варианты заголовков
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Response status:', response.status);
+
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Parse error:', e);
+        responseData = { error: responseText };
+      }
+
+      if (!response.ok) {
+        console.error('Error details:', responseData);
+
+        // Пробуем получить более детальную информацию
+        if (response.status === 401) {
+          // Проверяем валидность токена через getUser
+          const {
+            data: { user: tokenUser },
+            error: tokenError,
+          } = await supabase.auth.getUser(session.access_token);
+
+          if (tokenError || !tokenUser) {
+            console.error('Token validation failed:', tokenError);
+            throw new Error(
+              'Токен недействителен. Пожалуйста, выйдите и войдите снова.',
+            );
+          } else {
+            console.log('Token is valid for user:', tokenUser.id);
+            throw new Error(
+              'Ошибка авторизации в функции. Пожалуйста, свяжитесь с поддержкой.',
+            );
+          }
+        }
+
+        throw new Error(
+          responseData?.message ||
+            responseData?.error ||
+            `Ошибка ${response.status}`,
+        );
+      }
+
+      if (!responseData?.success) {
+        if (responseData?.partialDeletion) {
+          console.warn('Partial deletion:', responseData.partialDeletion);
+          throw new Error(
+            'Аккаунт удален не полностью. Пожалуйста, свяжитесь с поддержкой.',
+          );
+        }
+        throw new Error(
+          responseData?.error || 'Неизвестная ошибка при удалении',
+        );
+      }
+
+      if (isGuest) {
+        await clearGuestData();
+      }
+
+      setUser(null);
+      setIsGuest(false);
+
+      const message = responseData.warning
+        ? `Аккаунт удален, но некоторые данные могли сохраниться. ${responseData.warning}`
+        : 'Ваш аккаунт и все данные успешно удалены. Мы будем ждать вас снова!';
+
+      Alert.alert('Аккаунт удален', message, [
+        { text: 'OK', onPress: () => router.replace('/auth/welcome') },
+      ]);
+    } catch (error: any) {
+      console.error('Error in deleteAccount:', error);
+      Alert.alert(
+        'Ошибка удаления',
+        error.message ||
+          'Не удалось удалить аккаунт. Пожалуйста, попробуйте позже или свяжитесь с поддержкой.',
+      );
+    } finally {
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+  // const deleteAccount = async () => {
+  //   setIsLoading(true);
+  //   try {
+  //     if (!user) throw new Error('Пользователь не найден');
+
+  //     // Удаляем данные пользователя из всех таблиц
+  //     const tables = [
+  //       'moods',
+  //       'practices',
+  //       'journal',
+  //       'saved_content',
+  //       'chat_messages',
+  //       'user_profiles',
+  //     ];
+
+  //     for (const table of tables) {
+  //       const { error } = await supabase
+  //         .from(table)
+  //         .delete()
+  //         .eq('user_id', user.id);
+
+  //       if (error) {
+  //         console.error(`Error deleting from ${table}:`, error);
+  //       }
+  //     }
+
+  //     // Удаляем аккаунт из Auth
+  //     if (!isGuest) {
+  //       const { error } = await supabase.auth.admin.deleteUser(user.id);
+  //       if (error) throw error;
+  //     }
+
+  //     // Очищаем локальные данные
+  //     await clearGuestData();
+  //     setUser(null);
+  //     setIsGuest(false);
+
+  //     Alert.alert(
+  //       'Аккаунт удален',
+  //       'Ваш аккаунт и все данные успешно удалены.',
+  //       [{ text: 'OK', onPress: () => router.replace('/auth/welcome') }],
+  //     );
+  //   } catch (error: any) {
+  //     console.error('Error in deleteAccount:', error);
+  //     Alert.alert(
+  //       'Ошибка',
+  //       'Не удалось удалить аккаунт. Пожалуйста, попробуйте позже.',
+  //     );
+  //     throw error;
+  //   } finally {
+  //     if (mountedRef.current) {
+  //       setIsLoading(false);
+  //     }
+  //   }
+  // };
+
   return (
     <AuthContext.Provider
       value={{
@@ -490,6 +753,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         convertGuestToUser,
         refreshUser,
         updateProfile,
+        resetPassword,
+        deleteAccount,
       }}
     >
       {children}
