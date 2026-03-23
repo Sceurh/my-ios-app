@@ -526,6 +526,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  //Следует доделать логику смены пароля с подтверждением.
   const resetPassword = async (email: string) => {
     setIsLoading(true);
     try {
