@@ -75,7 +75,7 @@ function RootLayoutContent() {
           try {
             // Перенаправляем на экран смены пароля
             router.push({
-              pathname: '/auth/reset-password',
+              pathname: '/auth/update-password',
               params: {
                 access_token: session.access_token,
                 refresh_token: session?.refresh_token,
@@ -165,7 +165,7 @@ function RootLayoutContent() {
             }}
           />
           <Stack.Screen
-            name="auth/reset-password"
+            name="auth/update-password"
             options={{
               presentation: 'modal',
               headerShown: true,

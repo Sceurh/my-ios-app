@@ -1,8 +1,10 @@
+// app/auth/update-password.tsx
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Lock } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -22,37 +24,50 @@ export default function UpdatePasswordScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Проверяем, есть ли hash с токеном
-    const handleDeepLink = async () => {
-      const url = await Linking.getInitialURL();
-      console.log('Deep link URL:', url);
+    // Проверяем, есть ли активная сессия восстановления
+    const checkSession = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (url && url.includes('access_token')) {
-        // Supabase сам обработает токен
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          setIsValidSession(true);
-        }
-      } else {
-        // Обычный вход на экран
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          setIsValidSession(true);
+        if (!session) {
+          // Проверяем, не пришли ли мы по ссылке сброса
+          const url = await Linking.getInitialURL();
+          if (url && url.includes('access_token')) {
+            // Ждем, пока Supabase установит сессию
+            setTimeout(async () => {
+              const {
+                data: { session: newSession },
+              } = await supabase.auth.getSession();
+              if (!newSession) {
+                Alert.alert(
+                  'Ошибка',
+                  'Ссылка для сброса пароля недействительна',
+                );
+                router.replace('/auth/login');
+              } else {
+                setIsChecking(false);
+              }
+            }, 2000);
+          } else {
+            Alert.alert('Ошибка', 'Ссылка для сброса пароля недействительна');
+            router.replace('/auth/login');
+          }
         } else {
-          Alert.alert('Ошибка', 'Ссылка для сброса пароля недействительна');
-          router.replace('/auth/login');
+          setIsChecking(false);
         }
+      } catch (error) {
+        console.error('Session check error:', error);
+        Alert.alert('Ошибка', 'Не удалось проверить сессию');
+        router.replace('/auth/login');
       }
     };
 
-    handleDeepLink();
+    checkSession();
   }, []);
 
   const handleUpdatePassword = async () => {
@@ -79,20 +94,39 @@ export default function UpdatePasswordScreen() {
 
       if (error) throw error;
 
+      // Выходим из системы, чтобы пользователь вошел с новым паролем
+      await supabase.auth.signOut();
+
       Alert.alert(
         'Успешно',
         'Пароль успешно изменен. Теперь вы можете войти с новым паролем.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }],
       );
     } catch (error: any) {
-      Alert.alert('Ошибка', error.message);
+      Alert.alert('Ошибка', error.message || 'Не удалось обновить пароль');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!isValidSession) {
-    return null; // или покажи загрузку
+  if (isChecking) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={{ color: colors.textSecondary, marginTop: 16 }}>
+          Проверка сессии...
+        </Text>
+      </View>
+    );
   }
 
   return (

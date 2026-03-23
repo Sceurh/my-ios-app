@@ -67,7 +67,7 @@ export default function SettingsScreen() {
           </Text>
           <TouchableOpacity
             style={styles.settingItem}
-            onPress={() => router.push('../../auth/reset-password')}
+            onPress={() => router.push('/auth/update-password')}
           >
             <View style={styles.settingLeft}>
               <Key size={22} color={colors.textSecondary} />
