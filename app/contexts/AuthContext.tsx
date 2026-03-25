@@ -18,6 +18,7 @@ interface User {
   email: string;
   name?: string;
   avatar_url?: string;
+  role?: 'user' | 'admin'; // <-- ДОБАВЛЯЕМ role
   isGuest?: boolean;
   created_at?: string;
 }
@@ -32,6 +33,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isGuest: boolean;
+  isAdmin: boolean; // <-- ДОБАВЛЯЕМ isAdmin
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     email: string,
@@ -72,6 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initializedRef = useRef(false);
   const initStartedRef = useRef(false);
 
+  // Вычисляем isAdmin из user
+  const isAdmin = user?.role === 'admin';
+
   useEffect(() => {
     console.log('AuthProvider mounted');
     return () => {
@@ -90,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, {} as Partial<T>);
   };
 
-  // Гостевые функции (без изменений)
+  // Гостевые функции
   const getGuestUser = useCallback(async (): Promise<User | null> => {
     try {
       const guestData = await SecureStore.getItemAsync(GUEST_USER_KEY);
@@ -139,7 +144,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // FIXED: Улучшенная функция обработки сессии
+  // НОВАЯ ФУНКЦИЯ: Загрузка профиля пользователя (с ролью)
+  const fetchUserProfile = useCallback(
+    async (userId: string): Promise<Partial<User> | null> => {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('name, avatar_url, role')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (error) {
+          console.log('Profile fetch error:', error.message);
+          return null;
+        }
+
+        console.log('Fetched profile:', data);
+        return data;
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+    },
+    [],
+  );
+
+  // FIXED: Улучшенная функция обработки сессии с загрузкой роли
   const processUserSession = useCallback(
     async (session: Session | null) => {
       if (!mountedRef.current) {
@@ -151,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           console.log('Processing session for user:', session.user.email);
 
-          // FIXED: Проверяем валидность сессии через getUser
+          // Проверяем валидность сессии
           const {
             data: { user: currentUser },
             error: userError,
@@ -159,51 +189,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (userError || !currentUser) {
             console.log('Session not fully established, will retry...');
-            // Если сессия не валидна, но у нас есть session, пробуем позже
             setTimeout(() => refreshUser(), 1000);
             setIsLoading(false);
             return;
           }
 
-          // FIXED: Пробуем получить профиль, но не падаем при ошибке
-          let profile = null;
-          try {
-            const { data, error: profileError } = await supabase
-              .from('user_profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-
-            if (!profileError) {
-              profile = data;
-            } else {
-              console.log(
-                'Profile fetch error (non-critical):',
-                profileError.message,
-              );
-            }
-          } catch (e) {
-            console.log('Profile fetch exception (non-critical):', e);
-          }
+          // Загружаем профиль с ролью
+          const profile = await fetchUserProfile(session.user.id);
 
           const userData: User = {
             id: session.user.id,
             email: session.user.email!,
-            name: profile?.name || session.user.user_metadata?.name,
+            name:
+              profile?.name ||
+              session.user.user_metadata?.name ||
+              session.user.email?.split('@')[0],
             avatar_url:
               profile?.avatar_url || session.user.user_metadata?.avatar_url,
+            role: profile?.role || 'user', // <-- ДОБАВЛЯЕМ role, по умолчанию 'user'
             isGuest: false,
             created_at: session.user.created_at,
           };
 
           await clearGuestData();
 
-          // FIXED: Пытаемся создать/обновить профиль, но не блокируем процесс
+          // Обновляем профиль если нужно
           try {
             const profileData = removeUndefined({
               id: session.user.id,
               name: userData.name,
-              email: userData.email,
               avatar_url: userData.avatar_url,
               updated_at: new Date().toISOString(),
             });
@@ -244,10 +258,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     },
-    [clearGuestData, getGuestUser],
+    [clearGuestData, getGuestUser, fetchUserProfile],
   );
 
-  // FIXED: Инициализация с retry
+  // Инициализация
   const initAuth = async (retryCount = 0) => {
     if (initStartedRef.current) return;
     initStartedRef.current = true;
@@ -257,7 +271,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = await supabase.auth.getSession();
       console.log('Initial auth check complete');
 
-      // Даем время на установку сессии
       setTimeout(() => {
         processUserSession(data.session);
       }, 100);
@@ -339,7 +352,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
-      // Просто вызываем signUp - если пользователь существует, Supabase вернет ошибку
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -350,7 +362,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        // FIXED: Обрабатываем ошибку дубликата
         if (error.message.includes('User already registered')) {
           throw new Error('Пользователь с таким email уже существует');
         }
@@ -365,7 +376,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profileData = removeUndefined({
           id: data.user.id,
           name: name,
-          email: email,
+          role: 'user', // <-- ДОБАВЛЯЕМ role по умолчанию
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
@@ -444,7 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profileData = removeUndefined({
           id: data.user.id,
           name: name,
-          email: email,
+          role: 'user', // <-- ДОБАВЛЯЕМ role по умолчанию
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
@@ -526,12 +537,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  //Следует доделать логику смены пароля с подтверждением.
   const resetPassword = async (email: string) => {
     setIsLoading(true);
     try {
       const redirectTo = __DEV__
-        ? 'exp://192.168.0.35:8081/--/auth/update-password' // Ваш IP для разработки
+        ? 'exp://192.168.0.35:8081/--/auth/update-password'
         : 'mindcare://auth/update-password';
 
       console.log('Redirecting to:', redirectTo);
@@ -551,7 +561,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // FIXED: Полностью переработанный deleteAccount
   const deleteAccount = async () => {
     setIsLoading(true);
     try {
@@ -569,7 +578,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Получаем текущую сессию
       const {
         data: { session },
         error: sessionError,
@@ -579,15 +587,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Сессия не найдена. Пожалуйста, войдите снова.');
       }
 
-      // Проверяем, не истек ли токен
       let accessToken = session.access_token;
       const expiresAt = session.expires_at;
 
-      // Если токен скоро истечет или уже истек (добавляем запас в 30 секунд)
       if (expiresAt && expiresAt * 1000 - Date.now() < 30000) {
         console.log('Token expired or about to expire, refreshing...');
 
-        // Принудительно обновляем сессию
         const { data: refreshData, error: refreshError } =
           await supabase.auth.refreshSession();
 
@@ -604,7 +609,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const functionUrl = `${supabaseUrl}/functions/v1/delete-account`;
       const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-      // Делаем запрос с актуальным токеном
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -620,9 +624,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         console.error('Delete account failed:', responseData);
 
-        // Если получили 401 даже после обновления, возможно проблема с самой функцией
         if (response.status === 401) {
-          // Пробуем еще раз проверить пользователя через серверный метод
           const {
             data: { user: refreshedUser },
             error: userError,
@@ -638,7 +640,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(responseData.error || `Ошибка ${response.status}`);
       }
 
-      // Очищаем локальные данные после успешного удаления
       await supabase.auth.signOut();
       setUser(null);
       setIsGuest(false);
@@ -662,6 +663,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         isGuest,
+        isAdmin, // <-- ДОБАВЛЯЕМ isAdmin
         signIn,
         signUp,
         signOut,
