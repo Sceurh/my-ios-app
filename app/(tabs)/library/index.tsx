@@ -1,117 +1,216 @@
 // app/(tabs)/library/index.tsx
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
-  Bookmark,
   BookOpen,
-  Download,
+  Bookmark,
   FileText,
-  Filter,
   Heart,
+  Library,
   Trash2,
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  GestureResponderEvent,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { supabase } from '../../lib/database/api';
+import { SavedContentWithDetails } from '../../types';
 
-// Типы сохраненного контента
-type SavedItemType = 'article' | 'meditation' | 'exercise' | 'quote';
+const TYPE_CONFIG: Record<string, { icon: any; color: string; label: string }> =
+  {
+    article: { icon: FileText, color: '#3B82F6', label: 'Статья' },
+    meditation: { icon: BookOpen, color: '#8B5CF6', label: 'Медитация' },
+    practice: { icon: Heart, color: '#10B981', label: 'Практика' },
+    tip: { icon: Bookmark, color: '#F59E0B', label: 'Совет' },
+    video: { icon: BookOpen, color: '#EF4444', label: 'Видео' },
+  };
 
-interface SavedItem {
-  id: string;
-  title: string;
-  type: SavedItemType;
-  date: string;
-  duration?: string;
-  isDownloaded: boolean;
-}
-
-const SAMPLE_ITEMS: SavedItem[] = [
-  {
-    id: '1',
-    title: 'Как справляться с паническими атаками',
-    type: 'article',
-    date: '2024-01-15',
-    duration: '10 мин',
-    isDownloaded: true,
-  },
-  {
-    id: '2',
-    title: 'Вечерняя медитация для сна',
-    type: 'meditation',
-    date: '2024-01-14',
-    duration: '15 мин',
-    isDownloaded: true,
-  },
-  {
-    id: '3',
-    title: 'Дыхание 4-7-8',
-    type: 'exercise',
-    date: '2024-01-13',
-    duration: '5 мин',
-    isDownloaded: false,
-  },
-  {
-    id: '4',
-    title: 'Цитата дня: Спокойствие - это не отсутствие бури...',
-    type: 'quote',
-    date: '2024-01-12',
-    isDownloaded: false,
-  },
-  {
-    id: '5',
-    title: 'Управление тревогой в рабочей среде',
-    type: 'article',
-    date: '2024-01-11',
-    duration: '12 мин',
-    isDownloaded: true,
-  },
-];
-
-const TYPE_CONFIG = {
-  article: { icon: FileText, color: '#3B82F6', label: 'Статья' },
-  meditation: { icon: BookOpen, color: '#8B5CF6', label: 'Медитация' },
-  exercise: { icon: Heart, color: '#10B981', label: 'Упражнение' },
-  quote: { icon: Bookmark, color: '#F59E0B', label: 'Цитата' },
+// Выносим форматирование даты для оптимизации
+const formatDate = (dateStr: string): string => {
+  return new Date(dateStr).toLocaleDateString('ru-RU');
 };
 
 export default function LibraryScreen() {
+  const router = useRouter();
   const { colors } = useTheme();
-  const [savedItems, setSavedItems] = useState<SavedItem[]>(SAMPLE_ITEMS);
-  const [showDownloadedOnly, setShowDownloadedOnly] = useState(false);
-  const [selectedType, setSelectedType] = useState<SavedItemType | 'all'>(
-    'all',
+  const { user, isGuest } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [savedItems, setSavedItems] = useState<SavedContentWithDetails[]>([]);
+  const [selectedType, setSelectedType] = useState<string>('all');
+
+  const loadSavedContent = useCallback(async () => {
+    if (isGuest || !user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('saved_content')
+        .select(
+          `
+          content_id,
+          created_at,
+          content_items!inner (
+            id,
+            type,
+            title,
+            description,
+            tags
+          )
+        `,
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Трансформируем данные: content_items приходит как массив, берем первый элемент
+      const typedData = (data || []).map((item: any) => ({
+        content_id: item.content_id,
+        created_at: item.created_at,
+        content_items: item.content_items?.[0] || null,
+      }));
+
+      setSavedItems(typedData);
+    } catch (error) {
+      console.error('Error loading saved content:', error);
+      Alert.alert('Ошибка', 'Не удалось загрузить сохраненные материалы');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, isGuest]);
+
+  const handleDelete = useCallback(
+    async (contentId: string) => {
+      if (!user) return;
+
+      Alert.alert(
+        'Удалить',
+        'Вы уверены, что хотите удалить этот материал из сохраненного?',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const { error } = await supabase
+                  .from('saved_content')
+                  .delete()
+                  .eq('user_id', user.id)
+                  .eq('content_id', contentId);
+
+                if (error) throw error;
+                setSavedItems((prev) =>
+                  prev.filter((item) => item.content_id !== contentId),
+                );
+              } catch (error) {
+                console.error('Error deleting saved content:', error);
+                Alert.alert('Ошибка', 'Не удалось удалить материал');
+              }
+            },
+          },
+        ],
+      );
+    },
+    [user],
   );
 
-  const filteredItems = savedItems.filter((item) => {
-    if (showDownloadedOnly && !item.isDownloaded) return false;
-    if (selectedType !== 'all' && item.type !== selectedType) return false;
-    return true;
-  });
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedContent();
+    }, [loadSavedContent]),
+  );
 
-  const handleDelete = (id: string) => {
-    setSavedItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleDownload = (id: string) => {
-    setSavedItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, isDownloaded: true } : item,
-      ),
+  // Мемоизированный отфильтрованный список
+  const filteredItems = useMemo(() => {
+    if (selectedType === 'all') return savedItems;
+    return savedItems.filter(
+      (item) => item.content_items?.type === selectedType,
     );
-  };
+  }, [savedItems, selectedType]);
 
-  const getTypeIcon = (type: SavedItemType) => {
+  // Мемоизированное количество категорий
+  const categoriesCount = useMemo(() => {
+    return new Set(savedItems.map((i) => i.content_items?.type).filter(Boolean))
+      .size;
+  }, [savedItems]);
+
+  const getTypeIcon = useCallback((type: string) => {
     const config = TYPE_CONFIG[type];
+    if (!config) return null;
     const Icon = config.icon;
     return <Icon size={16} color={config.color} />;
-  };
+  }, []);
+
+  const handleCardPress = useCallback(
+    (contentId: string) => {
+      router.push({
+        pathname: '/content/detail',
+        params: { id: contentId },
+      });
+    },
+    [router],
+  );
+
+  const handleDeletePress = useCallback(
+    (e: GestureResponderEvent, contentId: string) => {
+      e.stopPropagation();
+      handleDelete(contentId);
+    },
+    [handleDelete],
+  );
+
+  const typeOptions = useMemo(() => ['all', ...Object.keys(TYPE_CONFIG)], []);
+
+  if (isGuest) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <View style={styles.emptyState}>
+          <Library size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Войдите в аккаунт
+          </Text>
+          <Text
+            style={[styles.emptyDescription, { color: colors.textSecondary }]}
+          >
+            Чтобы сохранять материалы и видеть их здесь, пожалуйста, войдите в
+            аккаунт
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Загрузка...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -121,17 +220,11 @@ export default function LibraryScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        {/* Заголовок */}
         <View style={styles.header}>
-          <View>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Библиотека
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Ваши сохраненные материалы
-            </Text>
-          </View>
-          <BookOpen size={32} color={colors.textSecondary} />
+          <Text style={[styles.title, { color: colors.text }]}>Библиотека</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Ваши сохраненные материалы
+          </Text>
         </View>
 
         {/* Статистика */}
@@ -146,15 +239,7 @@ export default function LibraryScreen() {
           </View>
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.accent }]}>
-              {savedItems.filter((i) => i.isDownloaded).length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Офлайн
-            </Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.accent }]}>
-              {new Set(savedItems.map((i) => i.type)).size}
+              {categoriesCount}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
               Категории
@@ -162,166 +247,161 @@ export default function LibraryScreen() {
           </View>
         </View>
 
-        {/* Фильтры */}
-        <View style={styles.filters}>
-          <View style={styles.filterGroup}>
-            <Filter size={18} color={colors.textSecondary} />
-            <Text style={[styles.filterLabel, { color: colors.text }]}>
-              Фильтры
-            </Text>
-          </View>
-
-          <View style={styles.switchContainer}>
-            <Text style={[styles.switchLabel, { color: colors.text }]}>
-              Только офлайн
-            </Text>
-            <Switch
-              value={showDownloadedOnly}
-              onValueChange={setShowDownloadedOnly}
-              trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        {/* Типы контента */}
+        {/* Фильтр по типу */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.typesScroll}
-          contentContainerStyle={styles.typesContainer}
+          style={styles.filterScroll}
         >
-          {['all', ...(Object.keys(TYPE_CONFIG) as SavedItemType[])].map(
-            (type) => {
+          <View style={styles.filterContainer}>
+            {typeOptions.map((type) => {
               const isActive = selectedType === type;
               const config =
                 type === 'all'
                   ? { color: colors.accent, label: 'Все' }
-                  : TYPE_CONFIG[type as SavedItemType];
+                  : TYPE_CONFIG[type];
 
               return (
                 <TouchableOpacity
                   key={type}
                   style={[
-                    styles.typeButton,
+                    styles.filterButton,
                     {
-                      backgroundColor: isActive ? config.color : colors.surface,
+                      backgroundColor: isActive
+                        ? config?.color || colors.accent
+                        : colors.surface,
                       borderColor: colors.border,
                     },
                   ]}
-                  onPress={() => setSelectedType(type as any)}
+                  onPress={() => setSelectedType(type)}
                 >
-                  {type !== 'all' && (
-                    <View style={styles.typeIcon}>
-                      {getTypeIcon(type as SavedItemType)}
-                    </View>
-                  )}
+                  {type !== 'all' && config && getTypeIcon(type)}
                   <Text
                     style={[
-                      styles.typeButtonText,
+                      styles.filterButtonText,
                       { color: isActive ? '#FFFFFF' : colors.text },
                     ]}
                   >
-                    {config.label}
+                    {config?.label || type}
                   </Text>
                 </TouchableOpacity>
               );
-            },
-          )}
+            })}
+          </View>
         </ScrollView>
 
         {/* Список сохраненного */}
         {filteredItems.length > 0 ? (
-          <View style={styles.itemsList}>
-            {filteredItems.map((item) => {
-              const config = TYPE_CONFIG[item.type];
+          <FlatList
+            data={filteredItems}
+            keyExtractor={(item) => item.content_id}
+            scrollEnabled={false}
+            contentContainerStyle={styles.itemsList}
+            renderItem={({ item }) => {
+              const config = TYPE_CONFIG[item.content_items?.type];
 
               return (
-                <View
-                  key={item.id}
-                  style={[styles.itemCard, { backgroundColor: colors.surface }]}
+                <Pressable
+                  onPress={() => handleCardPress(item.content_id)}
+                  style={({ pressed }) => [
+                    styles.cardTouchable,
+                    pressed && styles.cardPressed,
+                  ]}
                 >
-                  <View style={styles.itemHeader}>
-                    <View style={styles.itemType}>
-                      {getTypeIcon(item.type)}
+                  {({ pressed }) => (
+                    <View
+                      style={[
+                        styles.itemCard,
+                        { backgroundColor: colors.surface },
+                        pressed && styles.itemCardPressed,
+                      ]}
+                    >
+                      <View style={styles.itemHeader}>
+                        <View style={styles.itemType}>
+                          {getTypeIcon(item.content_items?.type)}
+                          <Text
+                            style={[
+                              styles.itemTypeLabel,
+                              { color: config?.color },
+                            ]}
+                          >
+                            {config?.label}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.itemDate,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          {formatDate(item.created_at)}
+                        </Text>
+                      </View>
+
                       <Text
-                        style={[styles.itemTypeLabel, { color: config.color }]}
+                        style={[styles.itemTitle, { color: colors.text }]}
+                        numberOfLines={2}
                       >
-                        {config.label}
+                        {item.content_items?.title}
                       </Text>
-                    </View>
-                    <Text
-                      style={[styles.itemDate, { color: colors.textSecondary }]}
-                    >
-                      {item.date}
-                    </Text>
-                  </View>
 
-                  <Text style={[styles.itemTitle, { color: colors.text }]}>
-                    {item.title}
-                  </Text>
+                      {item.content_items?.description && (
+                        <Text
+                          style={[
+                            styles.itemDescription,
+                            { color: colors.textSecondary },
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {item.content_items.description}
+                        </Text>
+                      )}
 
-                  {item.duration && (
-                    <Text
-                      style={[
-                        styles.itemDuration,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {item.duration}
-                    </Text>
-                  )}
+                      {item.content_items?.tags &&
+                        item.content_items.tags.length > 0 && (
+                          <View style={styles.tagsContainer}>
+                            {item.content_items.tags
+                              .slice(0, 3)
+                              .map((tag, index) => (
+                                <View
+                                  key={`${item.content_id}-tag-${index}`}
+                                  style={[
+                                    styles.tag,
+                                    { backgroundColor: colors.border },
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.tagText,
+                                      { color: colors.textSecondary },
+                                    ]}
+                                  >
+                                    #{tag}
+                                  </Text>
+                                </View>
+                              ))}
+                          </View>
+                        )}
 
-                  <View style={styles.itemActions}>
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        {
-                          backgroundColor: item.isDownloaded
-                            ? '#10B98120'
-                            : colors.border,
-                        },
-                      ]}
-                      onPress={() => handleDownload(item.id)}
-                      disabled={item.isDownloaded}
-                    >
-                      <Download
-                        size={16}
-                        color={
-                          item.isDownloaded ? '#10B981' : colors.textSecondary
-                        }
-                      />
-                      <Text
+                      <TouchableOpacity
                         style={[
-                          styles.actionText,
-                          {
-                            color: item.isDownloaded
-                              ? '#10B981'
-                              : colors.textSecondary,
-                          },
+                          styles.deleteButton,
+                          { backgroundColor: '#EF444420' },
                         ]}
+                        onPress={(e) => handleDeletePress(e, item.content_id)}
+                        activeOpacity={0.7}
                       >
-                        {item.isDownloaded ? 'Скачано' : 'Скачать'}
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        { backgroundColor: '#EF444420' },
-                      ]}
-                      onPress={() => handleDelete(item.id)}
-                    >
-                      <Trash2 size={16} color="#EF4444" />
-                      <Text style={[styles.actionText, { color: '#EF4444' }]}>
-                        Удалить
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                        <Trash2 size={16} color="#EF4444" />
+                        <Text style={[styles.deleteText, { color: '#EF4444' }]}>
+                          Удалить
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </Pressable>
               );
-            })}
-          </View>
+            }}
+          />
         ) : (
           <View style={styles.emptyState}>
             <BookOpen size={64} color={colors.textSecondary} />
@@ -331,38 +411,11 @@ export default function LibraryScreen() {
             <Text
               style={[styles.emptyDescription, { color: colors.textSecondary }]}
             >
-              Сохраняйте понравившиеся материалы, и они появятся здесь
+              Сохраняйте понравившиеся материалы на вкладке
+              &quot;Исследовать&quot;, и они появятся здесь
             </Text>
           </View>
         )}
-
-        {/* Быстрые действия */}
-        <View
-          style={[styles.quickActions, { backgroundColor: colors.surface }]}
-        >
-          <Text style={[styles.quickTitle, { color: colors.text }]}>
-            Быстрые действия
-          </Text>
-          <View style={styles.quickButtons}>
-            <TouchableOpacity
-              style={[styles.quickButton, { backgroundColor: colors.accent }]}
-              activeOpacity={0.8}
-            >
-              <Download size={20} color="#FFFFFF" />
-              <Text style={styles.quickButtonText}>Скачать всё</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.quickButton, { backgroundColor: colors.border }]}
-              activeOpacity={0.8}
-            >
-              <Trash2 size={20} color={colors.text} />
-              <Text style={[styles.quickButtonText, { color: colors.text }]}>
-                Очистить
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -376,10 +429,16 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  header: {
     marginBottom: 24,
   },
   title: {
@@ -415,64 +474,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.8,
   },
-  filters: {
+  filterScroll: {
+    marginBottom: 20,
+  },
+  filterContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  filterGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  filterLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  switchLabel: {
-    fontSize: 14,
-  },
-  typesScroll: {
-    marginBottom: 24,
-  },
-  typesContainer: {
     gap: 8,
     paddingRight: 20,
   },
-  typeButton: {
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
     gap: 6,
   },
-  typeIcon: {
-    marginRight: 4,
-  },
-  typeButtonText: {
+  filterButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   itemsList: {
     gap: 12,
-    marginBottom: 32,
+  },
+  cardTouchable: {
+    marginBottom: 12,
+  },
+  cardPressed: {
+    opacity: 0.9,
   },
   itemCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  itemCardPressed: {
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -499,27 +543,37 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 22,
   },
-  itemDuration: {
-    fontSize: 12,
+  itemDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
     opacity: 0.8,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 12,
   },
-  itemActions: {
-    flexDirection: 'row',
-    gap: 8,
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  actionButton: {
+  tagText: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
-    flex: 1,
-    justifyContent: 'center',
   },
-  actionText: {
-    fontSize: 12,
+  deleteText: {
+    fontSize: 13,
     fontWeight: '600',
   },
   emptyState: {
@@ -537,32 +591,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
-  },
-  quickActions: {
-    padding: 20,
-    borderRadius: 16,
-  },
-  quickTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  quickButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  quickButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  quickButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

@@ -172,6 +172,38 @@ function RootLayoutContent() {
               headerTitle: 'Сброс пароля',
             }}
           />
+          {/* Экран для создания контента (админ-панель) */}
+          <Stack.Screen
+            name="admin/create-content"
+            options={{
+              presentation: 'modal',
+              headerShown: true,
+              headerTitle: 'Добавить материал',
+              headerStyle: {
+                backgroundColor: colors.background,
+              },
+              headerTitleStyle: {
+                color: colors.text,
+              },
+              headerTintColor: colors.accent,
+            }}
+          />
+          {/* Экран для детального просмотра материала */}
+          <Stack.Screen
+            name="content/detail"
+            options={{
+              headerShown: true,
+              headerTitle: 'Материал',
+              headerStyle: {
+                backgroundColor: colors.background,
+              },
+              headerTitleStyle: {
+                color: colors.text,
+              },
+              headerTintColor: colors.accent,
+              headerBackTitle: 'Назад',
+            }}
+          />
         </Stack>
       ) : (
         <LoadingScreen />
