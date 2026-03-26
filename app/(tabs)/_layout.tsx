@@ -25,6 +25,7 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           height: 65,
+          position: 'absolute',
           paddingBottom: 10,
           paddingTop: 0,
           elevation: 8,
