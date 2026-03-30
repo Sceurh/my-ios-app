@@ -77,11 +77,11 @@ export default function LibraryScreen() {
 
       if (error) throw error;
 
-      // Трансформируем данные: content_items приходит как массив, берем первый элемент
+      // Прямое преобразование, content_items уже объект
       const typedData = (data || []).map((item: any) => ({
         content_id: item.content_id,
         created_at: item.created_at,
-        content_items: item.content_items?.[0] || null,
+        content_items: item.content_items || null,
       }));
 
       setSavedItems(typedData);
@@ -342,7 +342,7 @@ export default function LibraryScreen() {
                         style={[styles.itemTitle, { color: colors.text }]}
                         numberOfLines={2}
                       >
-                        {item.content_items?.title}
+                        {item.content_items?.title || 'Загрузка...'}
                       </Text>
 
                       {item.content_items?.description && (
@@ -384,17 +384,12 @@ export default function LibraryScreen() {
                         )}
 
                       <TouchableOpacity
-                        style={[
-                          styles.deleteButton,
-                          { backgroundColor: '#EF444420' },
-                        ]}
+                        style={styles.deleteButton}
                         onPress={(e) => handleDeletePress(e, item.content_id)}
                         activeOpacity={0.7}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
-                        <Trash2 size={16} color="#EF4444" />
-                        <Text style={[styles.deleteText, { color: '#EF4444' }]}>
-                          Удалить
-                        </Text>
+                        <Trash2 size={18} color="#EF4444" />
                       </TouchableOpacity>
                     </View>
                   )}
@@ -565,12 +560,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#EF444410',
   },
   deleteText: {
     fontSize: 13,
