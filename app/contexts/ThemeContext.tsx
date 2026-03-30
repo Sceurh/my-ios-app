@@ -40,16 +40,16 @@ const lightColors: ThemeColors = {
 };
 
 const darkColors: ThemeColors = {
-  background: '#0F172A',
+  background: '#030303',
   primary: '#8B5CF6',
-  surface: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
+  surface: '#1A1A1B',
+  text: '#D7DADC',
+  textSecondary: '#818384',
   accent: '#8B5CF6',
-  border: '#334155',
-  tabBar: '#1E293B',
+  border: '#343536',
+  tabBar: '#1A1A1B',
   tabBarActive: '#8B5CF6',
-  tabBarInactive: '#94A3B8',
+  tabBarInactive: '#818384',
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);

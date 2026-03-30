@@ -25,7 +25,6 @@ export const DAILY_TIPS = [
   'Сон — это не потеря времени, а самый мощный инструмент восстановления.',
 ];
 
-// Используй относительные пути Expo Router
 export const QUICK_ACTIONS: QuickAction[] = [
   {
     id: 'breathing',
@@ -33,7 +32,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     subtitle: 'Успокой нервную систему',
     color: '#7C3AED',
     icon: '🌬️',
-    route: '/(tabs)/explore', // или создай страницу для практик
+    route: '/(tabs)/explore',
   },
   {
     id: 'body-scan',
@@ -41,7 +40,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     subtitle: '5-минутная практика',
     color: '#10B981',
     icon: '🧘',
-    route: '/(tabs)/explore', // временно на explore
+    route: '/(tabs)/explore',
   },
   {
     id: 'journal',
@@ -49,7 +48,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
     subtitle: 'Зафиксируйте состояние',
     color: '#3B82F6',
     icon: '📓',
-    route: '/(tabs)/library', // временно на library
+    route: '/(tabs)/library',
   },
   {
     id: 'emergency',

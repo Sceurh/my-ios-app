@@ -23,6 +23,8 @@ const QuickActions = ({ onPressAction }: QuickActionsProps) => {
             <LinearGradient
               colors={[`${action.color}CC`, `${action.color}99`]}
               style={[styles.gradient, { borderLeftColor: action.color }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
               <Text style={styles.icon}>{action.icon}</Text>
               <Text style={styles.actionTitle}>{action.title}</Text>
@@ -43,7 +45,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     marginBottom: 20,
-    color: '#0F172A',
+    color: '#a6a6a6',
   },
   grid: {
     flexDirection: 'row',
@@ -52,7 +54,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    borderRadius: 20,
+    borderRadius: 25,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -61,9 +63,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   gradient: {
-    padding: 20,
-    borderLeftWidth: 4,
-    minHeight: 120,
+    padding: 15,
+    borderLeftWidth: 10,
+    minHeight: 160,
   },
   icon: {
     fontSize: 28,

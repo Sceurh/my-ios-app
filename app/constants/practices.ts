@@ -24,7 +24,7 @@ export const PRACTICES = {
     instructions:
       'Делайте это упражнение 2 раза в день. Не более 4 циклов за раз в первые месяцы практики.',
   },
-  bodyScan: {
+  'body-scan': {
     id: 'body-scan',
     title: 'Тело здесь',
     emoji: '🧘',
