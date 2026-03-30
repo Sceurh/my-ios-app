@@ -15,6 +15,7 @@ import {
   Plus,
   Sparkles,
   Star,
+  Trash2,
   TrendingUp,
   Video,
   Zap,
@@ -252,6 +253,46 @@ export default function ExploreScreen() {
     [user, isGuest, savedIds, router],
   );
 
+  const handleAdminDelete = useCallback(
+    async (contentId: string, event: any) => {
+      event.stopPropagation();
+
+      if (!isAdmin) return;
+
+      Alert.alert(
+        'Удалить материал',
+        'Вы уверены? Это действие нельзя отменить. Статья удалится у всех пользователей.',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const { error } = await supabase
+                  .from('content_items')
+                  .delete()
+                  .eq('id', contentId);
+
+                if (error) throw error;
+
+                // Обновляем локальный список
+                setContent((prev) =>
+                  prev.filter((item) => item.id !== contentId),
+                );
+                Alert.alert('Успешно', 'Материал удален');
+              } catch (error) {
+                console.error('Error deleting content:', error);
+                Alert.alert('Ошибка', 'Не удалось удалить материал');
+              }
+            },
+          },
+        ],
+      );
+    },
+    [isAdmin],
+  );
+
   useFocusEffect(
     useCallback(() => {
       loadContent();
@@ -276,70 +317,93 @@ export default function ExploreScreen() {
           });
         }}
       >
-        <View style={styles.contentHeader}>
-          <View
-            style={[
-              styles.contentBadge,
-              { backgroundColor: category?.color + '20' },
-            ]}
-          >
-            <Icon size={16} color={category?.color} />
-            <Text style={[styles.contentBadgeText, { color: category?.color }]}>
-              {category?.title || item.type}
-            </Text>
-          </View>
+        {/* Кнопка удаления для админа (абсолютно позиционирована) */}
+        {isAdmin && (
           <TouchableOpacity
-            onPress={() => toggleSaved(item.id)}
+            style={styles.adminDeleteButton}
+            onPress={(e) => handleAdminDelete(item.id, e)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            {isSaved ? (
-              <BookmarkCheck size={22} color={colors.accent} />
-            ) : (
-              <Bookmark size={22} color={colors.textSecondary} />
-            )}
+            <Trash2 size={18} color="#EF4444" />
           </TouchableOpacity>
-        </View>
-
-        <Text style={[styles.contentTitle, { color: colors.text }]}>
-          {item.title}
-        </Text>
-
-        {item.description && (
-          <Text
-            style={[styles.contentDescription, { color: colors.textSecondary }]}
-            numberOfLines={2}
-          >
-            {item.description}
-          </Text>
         )}
 
-        <View style={styles.contentFooter}>
-          {item.tags && item.tags.length > 0 && (
-            <View style={styles.tagsContainer}>
-              {item.tags.slice(0, 2).map((tag, index) => (
-                <View
-                  key={index}
-                  style={[styles.tag, { backgroundColor: colors.border }]}
-                >
-                  <Text
-                    style={[styles.tagText, { color: colors.textSecondary }]}
-                  >
-                    #{tag}
-                  </Text>
-                </View>
-              ))}
-              {item.tags.length > 2 && (
-                <Text
-                  style={[styles.moreTags, { color: colors.textSecondary }]}
-                >
-                  +{item.tags.length - 2}
-                </Text>
-              )}
+        <View
+          style={[
+            styles.contentCardInner,
+            isAdmin && styles.contentCardWithAdminButton,
+          ]}
+        >
+          <View style={styles.contentHeader}>
+            <View
+              style={[
+                styles.contentBadge,
+                { backgroundColor: category?.color + '20' },
+              ]}
+            >
+              <Icon size={16} color={category?.color} />
+              <Text
+                style={[styles.contentBadgeText, { color: category?.color }]}
+              >
+                {category?.title || item.type}
+              </Text>
             </View>
-          )}
-          <Text style={[styles.date, { color: colors.textSecondary }]}>
-            {new Date(item.created_at).toLocaleDateString('ru-RU')}
+            <TouchableOpacity
+              onPress={() => toggleSaved(item.id)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {isSaved ? (
+                <BookmarkCheck size={22} color={colors.accent} />
+              ) : (
+                <Bookmark size={22} color={colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.contentTitle, { color: colors.text }]}>
+            {item.title}
           </Text>
+
+          {item.description && (
+            <Text
+              style={[
+                styles.contentDescription,
+                { color: colors.textSecondary },
+              ]}
+              numberOfLines={2}
+            >
+              {item.description}
+            </Text>
+          )}
+
+          <View style={styles.contentFooter}>
+            {item.tags && item.tags.length > 0 && (
+              <View style={styles.tagsContainer}>
+                {item.tags.slice(0, 2).map((tag, index) => (
+                  <View
+                    key={index}
+                    style={[styles.tag, { backgroundColor: colors.border }]}
+                  >
+                    <Text
+                      style={[styles.tagText, { color: colors.textSecondary }]}
+                    >
+                      #{tag}
+                    </Text>
+                  </View>
+                ))}
+                {item.tags.length > 2 && (
+                  <Text
+                    style={[styles.moreTags, { color: colors.textSecondary }]}
+                  >
+                    +{item.tags.length - 2}
+                  </Text>
+                )}
+              </View>
+            )}
+            <Text style={[styles.date, { color: colors.textSecondary }]}>
+              {new Date(item.created_at).toLocaleDateString('ru-RU')}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -393,7 +457,7 @@ export default function ExploreScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        {/* Заголовок с кнопкой для админа */}
+        {/* Заголовок (с кнопкой для админа) */}
         <View style={styles.header}>
           <View>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -771,5 +835,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  adminDeleteButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 20,
+    backgroundColor: '#EF444420',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentCardInner: {
+    flex: 1,
+  },
+  contentCardWithAdminButton: {
+    paddingRight: 40,
   },
 });

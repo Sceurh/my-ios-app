@@ -73,42 +73,95 @@ export default function ContentDetailScreen() {
     return null;
   }
 
+  // Определяем тип материала для отображения
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'article':
+        return 'Статья';
+      case 'meditation':
+        return 'Медитация';
+      case 'practice':
+        return 'Практика';
+      case 'tip':
+        return 'Совет';
+      case 'video':
+        return 'Видео';
+      default:
+        return 'Материал';
+    }
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['bottom']}
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        bounces={true}
       >
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {content.title}
+        {/* tittle */}
+        <Text style={[styles.title, { color: colors.text }]}>
+          {content.title}
+        </Text>
+
+        {/* Мета-информация(type) */}
+        <View style={styles.metaContainer}>
+          <View style={styles.typeBadge}>
+            <Text style={[styles.typeText, { color: colors.textSecondary }]}>
+              {getTypeLabel(content.type)}
+            </Text>
+          </View>
+          <View style={[styles.metaDot, { backgroundColor: colors.border }]} />
+          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+            {content.tags?.length || 0} тегов
           </Text>
-          {content.tags && content.tags.length > 0 && (
-            <View style={styles.tagsContainer}>
-              {content.tags.map((tag: string, index: number) => (
-                <View
-                  key={index}
-                  style={[styles.tag, { backgroundColor: colors.border }]}
-                >
-                  <Text
-                    style={[styles.tagText, { color: colors.textSecondary }]}
-                  >
-                    #{tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
 
-        {content.description && (
-          <Text style={[styles.description, { color: colors.textSecondary }]}>
-            {content.description}
-          </Text>
+        {/* tags */}
+        {content.tags && content.tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {content.tags.map((tag: string, index: number) => (
+              <View
+                key={index}
+                style={[
+                  styles.tag,
+                  {
+                    backgroundColor: `${colors.accent}17`,
+                    borderColor: `${colors.accent}15`,
+                    shadowColor: colors.accent,
+                  },
+                ]}
+              >
+                <Text style={[styles.tagText, { color: colors.accent }]}>
+                  #{tag}
+                </Text>
+              </View>
+            ))}
+          </View>
         )}
 
+        {/* Описание(description) в стиле курсив */}
+        {content.description && (
+          <View style={styles.redditBlock}>
+            <View
+              style={[styles.redditBar, { backgroundColor: colors.accent }]}
+            />
+            <View style={styles.redditContent}>
+              <Text
+                style={[
+                  styles.redditText,
+                  { color: colors.textSecondary, fontStyle: 'italic' },
+                ]}
+              >
+                {content.description}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* content */}
         {content.content && (
           <Text style={[styles.contentText, { color: colors.text }]}>
             {content.content}
@@ -129,40 +182,86 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingBottom: 40,
-  },
-  header: {
-    marginBottom: 20,
+    paddingTop: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     marginBottom: 12,
-    lineHeight: 36,
+    lineHeight: 40,
+    letterSpacing: -0.5,
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  typeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+  },
+  typeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  metaDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.5,
+  },
+  metaText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginBottom: 24,
   },
   tag: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6000,
+    elevation: 200,
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
+    letterSpacing: 0.2,
   },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
+  redditBlock: {
+    flexDirection: 'row',
     marginBottom: 24,
-    fontStyle: 'italic',
+    backgroundColor: 'transparent',
+  },
+  redditBar: {
+    width: 4,
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  redditContent: {
+    flex: 1,
+  },
+  redditText: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '400',
   },
   contentText: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
+    letterSpacing: 0.2,
   },
 });
